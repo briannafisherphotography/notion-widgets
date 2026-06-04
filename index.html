@@ -1,0 +1,972 @@
+<!-- Full updated HTML with dark mode toggle, dynamic fields, investing, tithe, and 50/20/20/10 pie chart -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>2026 Budget Dashboard</title>
+
+<style>
+:root {
+  --bg: #eef7ff;
+  --card: #ffffff;
+  --text: #102033;
+  --muted: #667085;
+  --border: #d9e8f7;
+  --blue: #2563eb;
+  --blue-dark: #1e40af;
+  --sky: #38bdf8;
+  --green: #059669;
+  --red: #dc2626;
+  --soft-blue: #dbeafe;
+  --shadow: 0 18px 45px rgba(37, 99, 235, 0.12);
+  --radius: 22px;
+}
+
+body.dark {
+  --bg: #020617;
+  --card: rgba(15, 23, 42, 0.94);
+  --text: #e5eefb;
+  --muted: #94a3b8;
+  --border: #1e3a5f;
+  --blue: #38bdf8;
+  --blue-dark: #2563eb;
+  --sky: #7dd3fc;
+  --green: #34d399;
+  --red: #fb7185;
+  --soft-blue: #172554;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, #bfdbfe 0, transparent 35%),
+    radial-gradient(circle at top right, #e0f2fe 0, transparent 30%),
+    linear-gradient(135deg, #f8fbff, var(--bg));
+}
+
+body.dark {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.35) 0, transparent 35%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18) 0, transparent 30%),
+    linear-gradient(135deg, #020617, #0f172a);
+}
+
+.app {
+  max-width: 1280px;
+  margin: auto;
+  padding: 34px 20px 70px;
+}
+
+header { margin-bottom: 24px; }
+
+h1 {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: -0.05em;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.theme-toggle {
+  margin-top: 14px;
+  max-width: 190px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+body.dark .card {
+  background: var(--card);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.label {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.amount {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.positive { color: var(--green); }
+.negative { color: var(--red); }
+
+.grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.section { margin-top: 20px; }
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 19px;
+}
+
+form {
+  display: grid;
+  gap: 12px;
+}
+
+.hidden { display: none; }
+
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  font-size: 14px;
+  color: var(--text);
+  background: white;
+  outline: none;
+}
+
+body.dark input,
+body.dark select {
+  background: #0f172a;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+input:focus, select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+button {
+  border: 0;
+  border-radius: 13px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, var(--blue-dark), var(--blue), var(--sky));
+  color: white;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+button:hover { opacity: 0.9; }
+
+.btn-light {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+body.dark .btn-light {
+  background: #172554;
+  color: #bfdbfe;
+}
+
+.btn-danger {
+  background: #fee2e2;
+  color: var(--red);
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+body.dark .btn-danger {
+  background: #3f1d2a;
+  color: #fb7185;
+}
+
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th, td {
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.pill {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--soft-blue);
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+body.dark .pill {
+  background: #172554;
+  color: #bfdbfe;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.fund-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.fund-row:last-child { border-bottom: 0; }
+
+.fund-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.small {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 22px;
+}
+
+.pie-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.pie {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #2563eb 0deg 180deg,
+    #38bdf8 180deg 252deg,
+    #93c5fd 252deg 324deg,
+    #1e40af 324deg 360deg
+  );
+  box-shadow: inset 0 0 0 18px rgba(255,255,255,.55);
+}
+
+body.dark .pie {
+  box-shadow: inset 0 0 0 18px rgba(15, 23, 42, 0.72);
+}
+
+.legend-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+@media (max-width: 900px) {
+  .summary, .grid, .mini-grid, .pie-layout {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+<main class="app">
+  <header>
+    <h1>2026 Budget Dashboard</h1>
+    <p class="subtitle">Adam and Brianna's Finance Tracker</p>
+    <button type="button" id="themeToggle" class="theme-toggle">Toggle Dark Mode</button>
+  </header>
+
+  <section class="summary">
+    <div class="card">
+      <div class="label">2026 Income</div>
+      <div class="amount positive" id="totalIncome">$0.00</div>
+    </div>
+    <div class="card">
+      <div class="label">2026 Expenses</div>
+      <div class="amount negative" id="totalExpenses">$0.00</div>
+    </div>
+    <div class="card">
+      <div class="label">2026 Remaining Balance</div>
+      <div class="amount" id="remainingBalance">$0.00</div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Add Transaction</h2>
+
+      <form id="transactionForm">
+        <label>Transaction Type
+          <select id="type">
+            <option value="income">Income Transaction</option>
+            <option value="expense">Expense Transaction</option>
+            <option value="sinking">Sinking Fund</option>
+            <option value="investing">Investing Transaction</option>
+          </select>
+        </label>
+
+        <label>Date
+          <input type="date" id="date" required>
+        </label>
+
+        <label>Description
+          <input type="text" id="description" placeholder="Paycheck, rent, groceries..." required>
+        </label>
+
+        <label id="sinkingActionField" class="hidden">Sinking Fund Action
+          <select id="sinkingAction">
+            <option value="add">Add to Sinking Fund</option>
+            <option value="subtract">Subtract from Sinking Fund</option>
+          </select>
+        </label>
+
+        <label id="categoryField" class="hidden">Category
+          <select id="category"></select>
+        </label>
+
+        <label>Person
+          <select id="person">
+            <option>Adam</option>
+            <option>Brianna</option>
+          </select>
+        </label>
+
+        <label id="paymentMethodField" class="hidden">Payment Method / Card
+          <select id="method">
+            <option>Bilt</option>
+            <option>CSP</option>
+            <option>CFU</option>
+            <option>CBI</option>
+            <option>CBIC</option>
+            <option>Hilton Surpass</option>
+            <option>VentureOne</option>
+            <option>BofA</option>
+            <option>WF Active Cash</option>
+            <option>Cash</option>
+            <option>Prime</option>
+            <option>AAdvantage</option>
+            <option>Direct Deposit</option>
+          </select>
+        </label>
+
+        <label>Amount
+          <input type="number" id="amount" min="0" step="0.01" required>
+        </label>
+
+        <button type="submit">Add Transaction</button>
+        <button type="button" class="btn-light" id="clearAll">Clear Added Transactions</button>
+      </form>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Monthly Income, Expenses, and Remaining Balance</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Income</th>
+                <th>Expenses</th>
+                <th>Remaining</th>
+              </tr>
+            </thead>
+            <tbody id="monthlySummary"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section card">
+        <h2>Budget Breakdown</h2>
+
+        <label>View Month
+          <select id="budgetMonth"></select>
+        </label>
+
+        <div class="pie-layout section">
+          <div class="pie"></div>
+          <div id="budgetMethodBreakdown"></div>
+        </div>
+      </div>
+
+      <div class="section card">
+        <h2>2026 Sinking Funds</h2>
+        <div id="currentSinkingFunds"></div>
+      </div>
+
+      <div class="section mini-grid">
+        <div class="card">
+          <h2>Income Transactions</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Person</th>
+                  <th>Amount</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="incomeTransactions"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Expense Transactions</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Person</th>
+                  <th>Payment</th>
+                  <th>Amount</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="expenseTransactions"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="section card">
+        <h2>Investing Transactions</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Person</th>
+                <th>Amount</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="investingTransactions"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section card">
+        <h2>Sinking Fund Transactions</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Action</th>
+                <th>Category</th>
+                <th>Person</th>
+                <th>Amount</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="sinkingTransactions"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section card">
+        <h2>Credit Card Spend</h2>
+        <div id="cardSpend"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const STORAGE_KEY = "budgetAddedTransactions2026";
+
+const historicalMonthly = [
+  { month: "2026-01", income: 4737.23, expenses: 2078.26 },
+  { month: "2026-02", income: 3459.39, expenses: 2013.99 },
+  { month: "2026-03", income: 3666.86, expenses: 2160.46 },
+  { month: "2026-04", income: 3973.37, expenses: 1735.28 },
+  { month: "2026-05", income: 3289.61, expenses: 1782.47 },
+  { month: "2026-06", income: 0, expenses: 0 }
+];
+
+const currentSinkingFunds = [
+  { name: "Miscellanous", current: 3007.65 },
+  { name: "Gifts", current: 157.68 },
+  { name: "Technology", current: 167.70 },
+  { name: "Vacations", current: 938.80 },
+  { name: "Wedding", current: 2009.47 },
+  { name: "Christmas", current: 277.96 },
+  { name: "Car Maintenance", current: 753.09 },
+  { name: "Camera Gear", current: 939.74 },
+  { name: "Health", current: 606.03 },
+  { name: "Emergency", current: 25352.25 }
+];
+
+const expenseCategories = ["Rent", "Utilities", "Essentials", "Food", "Health", "Wants", "Tithe"];
+const sinkingCategories = ["Miscellanous", "Gifts", "Technology", "Vacations", "Wedding", "Christmas", "Car Maintenance", "Camera Gear", "Health", "Emergency"];
+const investingCategories = ["401K", "Roth IRA", "Acorns"];
+
+let transactions = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+const form = document.getElementById("transactionForm");
+const dateInput = document.getElementById("date");
+const typeInput = document.getElementById("type");
+const categoryField = document.getElementById("categoryField");
+const categoryInput = document.getElementById("category");
+const sinkingActionField = document.getElementById("sinkingActionField");
+const paymentMethodField = document.getElementById("paymentMethodField");
+const budgetMonthInput = document.getElementById("budgetMonth");
+const themeToggle = document.getElementById("themeToggle");
+
+dateInput.valueAsDate = new Date();
+
+const savedTheme = localStorage.getItem("budgetTheme");
+
+if (savedTheme === "dark") {
+  document.body.classList.add("dark");
+}
+
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  localStorage.setItem(
+    "budgetTheme",
+    document.body.classList.contains("dark") ? "dark" : "light"
+  );
+});
+
+function money(value) {
+  return Number(value).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD"
+  });
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+}
+
+function monthLabel(monthString) {
+  const date = new Date(monthString + "-01T00:00:00");
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function sumTransactions(filter) {
+  return transactions
+    .filter(filter)
+    .reduce((total, item) => total + Number(item.amount), 0);
+}
+
+function updateDynamicFields() {
+  const type = typeInput.value;
+
+  categoryInput.innerHTML = "";
+  categoryField.classList.add("hidden");
+  sinkingActionField.classList.add("hidden");
+  paymentMethodField.classList.add("hidden");
+
+  if (type === "expense") {
+    categoryField.classList.remove("hidden");
+    paymentMethodField.classList.remove("hidden");
+    expenseCategories.forEach(category => categoryInput.add(new Option(category, category)));
+  }
+
+  if (type === "sinking") {
+    categoryField.classList.remove("hidden");
+    sinkingActionField.classList.remove("hidden");
+    sinkingCategories.forEach(category => categoryInput.add(new Option(category, category)));
+  }
+
+  if (type === "investing") {
+    categoryField.classList.remove("hidden");
+    investingCategories.forEach(category => categoryInput.add(new Option(category, category)));
+  }
+}
+
+function getMonthlyData() {
+  const monthly = {};
+
+  historicalMonthly.forEach(item => {
+    monthly[item.month] = {
+      income: item.income,
+      expenses: item.expenses
+    };
+  });
+
+  transactions.forEach(item => {
+    const month = item.date.slice(0, 7);
+
+    if (!monthly[month]) {
+      monthly[month] = { income: 0, expenses: 0 };
+    }
+
+    if (item.type === "income") {
+      monthly[month].income += Number(item.amount);
+    } else if (item.type === "expense" || item.type === "investing" || item.type === "sinking") {
+      monthly[month].expenses += Number(item.amount);
+    }
+  });
+
+  return monthly;
+}
+
+function renderSummary() {
+  const monthly = getMonthlyData();
+  const totalIncome = Object.values(monthly).reduce((sum, item) => sum + item.income, 0);
+  const totalExpenses = Object.values(monthly).reduce((sum, item) => sum + item.expenses, 0);
+  const remaining = totalIncome - totalExpenses;
+
+  document.getElementById("totalIncome").textContent = money(totalIncome);
+  document.getElementById("totalExpenses").textContent = money(totalExpenses);
+  document.getElementById("remainingBalance").textContent = money(remaining);
+  document.getElementById("remainingBalance").className = "amount " + (remaining >= 0 ? "positive" : "negative");
+}
+
+function renderMonthlySummary() {
+  const monthly = getMonthlyData();
+
+  document.getElementById("monthlySummary").innerHTML = Object.keys(monthly)
+    .sort()
+    .map(month => {
+      const income = monthly[month].income;
+      const expenses = monthly[month].expenses;
+      const remaining = income - expenses;
+
+      return `
+        <tr>
+          <td>${monthLabel(month)}</td>
+          <td class="positive">${money(income)}</td>
+          <td class="negative">${money(expenses)}</td>
+          <td class="${remaining >= 0 ? "positive" : "negative"}">${money(remaining)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function renderBudgetMonthOptions() {
+  const monthly = getMonthlyData();
+  const currentValue = budgetMonthInput.value;
+
+  budgetMonthInput.innerHTML = Object.keys(monthly)
+    .sort()
+    .map(month => `<option value="${month}">${monthLabel(month)}</option>`)
+    .join("");
+
+  if (currentValue && monthly[currentValue]) {
+    budgetMonthInput.value = currentValue;
+  } else {
+    budgetMonthInput.value = Object.keys(monthly).sort().at(-1);
+  }
+}
+
+function renderBudgetMethod() {
+  const month = budgetMonthInput.value;
+  const monthly = getMonthlyData();
+  const income = monthly[month]?.income || 0;
+
+  const essentialsBudget = income * 0.5;
+  const investingBudget = income * 0.2;
+  const wantsBudget = income * 0.2;
+  const titheBudget = income * 0.1;
+
+  const essentialsSpent = sumTransactions(item =>
+    item.type === "expense" &&
+    item.date.slice(0, 7) === month &&
+    ["Rent", "Utilities", "Food", "Essentials"].includes(item.category)
+  );
+
+  const investingSpent = sumTransactions(item =>
+    item.type === "investing" &&
+    item.date.slice(0, 7) === month &&
+    ["Roth IRA", "Acorns"].includes(item.category)
+  );
+
+  const wantsSpent = sumTransactions(item =>
+    item.type === "expense" &&
+    item.date.slice(0, 7) === month &&
+    item.category === "Wants"
+  );
+
+  const titheSpent = sumTransactions(item =>
+    item.type === "expense" &&
+    item.date.slice(0, 7) === month &&
+    item.category === "Tithe"
+  );
+
+  document.getElementById("budgetMethodBreakdown").innerHTML = `
+    <div class="small">Based on ${money(income)} income for ${monthLabel(month)}.</div>
+
+    <div class="legend-item">
+      <span><span class="legend-dot" style="background:#2563eb"></span>50% Needs: Rent, Utilities, Food, Essentials</span>
+      <strong>${money(essentialsSpent)} / ${money(essentialsBudget)}</strong>
+    </div>
+
+    <div class="legend-item">
+      <span><span class="legend-dot" style="background:#38bdf8"></span>20% Investing: Roth IRA, Acorns</span>
+      <strong>${money(investingSpent)} / ${money(investingBudget)}</strong>
+    </div>
+
+    <div class="legend-item">
+      <span><span class="legend-dot" style="background:#93c5fd"></span>20% Wants</span>
+      <strong>${money(wantsSpent)} / ${money(wantsBudget)}</strong>
+    </div>
+
+    <div class="legend-item">
+      <span><span class="legend-dot" style="background:#1e40af"></span>10% Tithe</span>
+      <strong>${money(titheSpent)} / ${money(titheBudget)}</strong>
+    </div>
+  `;
+}
+
+function renderSinkingFunds() {
+  const container = document.getElementById("currentSinkingFunds");
+
+  container.innerHTML = currentSinkingFunds.map(fund => {
+    const additions = sumTransactions(item =>
+      item.type === "sinking" &&
+      item.category === fund.name &&
+      item.sinkingAction === "add"
+    );
+
+    const withdrawals = sumTransactions(item =>
+      item.type === "sinking" &&
+      item.category === fund.name &&
+      item.sinkingAction === "subtract"
+    );
+
+    const current = fund.current + additions - withdrawals;
+
+    return `
+      <div class="fund-row">
+        <div class="fund-top">
+          <strong>${fund.name}</strong>
+          <span>${money(current)}</span>
+        </div>
+        <div class="small">Added: ${money(additions)} · Used: ${money(withdrawals)}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderTransactionTables() {
+  const incomeRows = transactions
+    .filter(item => item.type === "income")
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map(item => `
+      <tr>
+        <td>${item.date}</td>
+        <td>${item.description}</td>
+        <td>${item.person}</td>
+        <td class="positive">+${money(item.amount)}</td>
+        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+      </tr>
+    `)
+    .join("");
+
+  const expenseRows = transactions
+    .filter(item => item.type === "expense")
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map(item => `
+      <tr>
+        <td>${item.date}</td>
+        <td>${item.description}</td>
+        <td><span class="pill">${item.category}</span></td>
+        <td>${item.person}</td>
+        <td>${item.method}</td>
+        <td class="negative">-${money(item.amount)}</td>
+        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+      </tr>
+    `)
+    .join("");
+
+  const investingRows = transactions
+    .filter(item => item.type === "investing")
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map(item => `
+      <tr>
+        <td>${item.date}</td>
+        <td>${item.description}</td>
+        <td><span class="pill">${item.category}</span></td>
+        <td>${item.person}</td>
+        <td class="negative">-${money(item.amount)}</td>
+        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+      </tr>
+    `)
+    .join("");
+
+  const sinkingRows = transactions
+    .filter(item => item.type === "sinking")
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map(item => `
+      <tr>
+        <td>${item.date}</td>
+        <td>${item.description}</td>
+        <td>${item.sinkingAction === "add" ? "Add" : "Subtract"}</td>
+        <td><span class="pill">${item.category}</span></td>
+        <td>${item.person}</td>
+        <td class="${item.sinkingAction === "add" ? "positive" : "negative"}">
+          ${item.sinkingAction === "add" ? "+" : "-"}${money(item.amount)}
+        </td>
+        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+      </tr>
+    `)
+    .join("");
+
+  document.getElementById("incomeTransactions").innerHTML =
+    incomeRows || `<tr><td colspan="5" class="empty">No added income transactions yet.</td></tr>`;
+
+  document.getElementById("expenseTransactions").innerHTML =
+    expenseRows || `<tr><td colspan="7" class="empty">No added expense transactions yet.</td></tr>`;
+
+  document.getElementById("investingTransactions").innerHTML =
+    investingRows || `<tr><td colspan="6" class="empty">No added investing transactions yet.</td></tr>`;
+
+  document.getElementById("sinkingTransactions").innerHTML =
+    sinkingRows || `<tr><td colspan="7" class="empty">No added sinking fund transactions yet.</td></tr>`;
+}
+
+function renderGroupedList(id, groupedData, emptyMessage) {
+  const container = document.getElementById(id);
+  const entries = Object.entries(groupedData).sort((a, b) => b[1] - a[1]);
+
+  if (!entries.length) {
+    container.innerHTML = `<p class="small">${emptyMessage}</p>`;
+    return;
+  }
+
+  container.innerHTML = entries.map(([name, amount]) => `
+    <div class="fund-row">
+      <div class="fund-top">
+        <strong>${name}</strong>
+        <span>${money(amount)}</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+function groupBy(key, filter) {
+  return transactions.filter(filter).reduce((acc, item) => {
+    const group = item[key] || "Other";
+    acc[group] = (acc[group] || 0) + Number(item.amount);
+    return acc;
+  }, {});
+}
+
+function deleteTransaction(id) {
+  transactions = transactions.filter(item => item.id !== id);
+  save();
+  render();
+}
+
+function render() {
+  renderSummary();
+  renderMonthlySummary();
+  renderBudgetMonthOptions();
+  renderBudgetMethod();
+  renderSinkingFunds();
+  renderTransactionTables();
+
+  renderGroupedList(
+    "cardSpend",
+    groupBy("method", item => item.type === "expense"),
+    "No added credit card spending yet."
+  );
+}
+
+form.addEventListener("submit", event => {
+  event.preventDefault();
+
+  const type = typeInput.value;
+
+  transactions.push({
+    id: crypto.randomUUID(),
+    type,
+    date: document.getElementById("date").value,
+    description: document.getElementById("description").value.trim(),
+    category: type === "income" ? "" : document.getElementById("category").value,
+    sinkingAction: type === "sinking" ? document.getElementById("sinkingAction").value : "",
+    person: document.getElementById("person").value,
+    method: type === "expense" ? document.getElementById("method").value : "",
+    amount: Number(document.getElementById("amount").value)
+  });
+
+  save();
+  form.reset();
+  dateInput.valueAsDate = new Date();
+  updateDynamicFields();
+  render();
+});
+
+document.getElementById("clearAll").addEventListener("click", () => {
+  if (confirm("Clear only the transactions you added in this app?")) {
+    transactions = [];
+    save();
+    render();
+  }
+});
+
+typeInput.addEventListener("change", updateDynamicFields);
+budgetMonthInput.addEventListener("change", renderBudgetMethod);
+
+updateDynamicFields();
+render();
+</script>
+</body>
+</html>
