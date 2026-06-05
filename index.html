@@ -661,8 +661,13 @@ function getMonthlyData() {
       };
     }
 
-    if (item.type === "income") monthly[month].income += Number(item.amount);
-    if (item.type === "expense") monthly[month].expenses += Number(item.amount);
+    if (item.type === "income") {
+      monthly[month].income += Number(item.amount);
+    }
+
+    if (item.type === "expense") {
+      monthly[month].expenses += Number(item.amount);
+    }
 
     if (item.type === "investing" && ["Roth IRA", "Acorns"].includes(item.category)) {
       monthly[month].investing += Number(item.amount);
@@ -670,10 +675,6 @@ function getMonthlyData() {
 
     if (item.type === "sinking" && item.sinkingAction === "add") {
       monthly[month].savings += Number(item.amount);
-    }
-
-    if (item.type === "sinking" && item.sinkingAction === "subtract") {
-      monthly[month].expenses += Number(item.amount);
     }
   });
 
