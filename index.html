@@ -1,4 +1,4 @@
-<!-- Full updated HTML with dark mode toggle, dynamic fields, investing, tithe, and 50/20/20/10 pie chart -->
+<!-- Full updated HTML with dark mode, dynamic fields, monthly savings/investing columns, progress-bar budget breakdown, and transaction type memory -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -77,11 +77,6 @@ h1 {
   margin-top: 8px;
 }
 
-.theme-toggle {
-  margin-top: 14px;
-  max-width: 190px;
-}
-
 .card {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--border);
@@ -91,9 +86,7 @@ h1 {
   backdrop-filter: blur(12px);
 }
 
-body.dark .card {
-  background: var(--card);
-}
+body.dark .card { background: var(--card); }
 
 .summary {
   display: grid;
@@ -179,6 +172,11 @@ button {
 }
 
 button:hover { opacity: 0.9; }
+
+.theme-toggle {
+  margin-top: 14px;
+  max-width: 190px;
+}
 
 .btn-light {
   background: #e0f2fe;
@@ -270,48 +268,52 @@ body.dark .pill {
   padding: 22px;
 }
 
-.pie-layout {
+.budget-progress-group {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 20px;
-  align-items: center;
+  gap: 16px;
 }
 
-.pie {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: conic-gradient(
-    #2563eb 0deg 180deg,
-    #38bdf8 180deg 252deg,
-    #93c5fd 252deg 324deg,
-    #1e40af 324deg 360deg
-  );
-  box-shadow: inset 0 0 0 18px rgba(255,255,255,.55);
-}
-
-body.dark .pie {
-  box-shadow: inset 0 0 0 18px rgba(15, 23, 42, 0.72);
-}
-
-.legend-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
+.progress-card {
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
 }
 
-.legend-dot {
-  display: inline-block;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  margin-right: 8px;
+.progress-card:last-child { border-bottom: 0; }
+
+.progress-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: baseline;
+}
+
+.progress-title {
+  font-weight: 750;
+}
+
+.progress-track {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--soft-blue);
+  overflow: hidden;
+  margin-top: 9px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue-dark), var(--blue), var(--sky));
+  transition: width 0.25s ease;
+}
+
+.progress-fill.over {
+  background: linear-gradient(90deg, #f97316, var(--red));
 }
 
 @media (max-width: 900px) {
-  .summary, .grid, .mini-grid, .pie-layout {
+  .summary, .grid, .mini-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -410,7 +412,7 @@ body.dark .pie {
 
     <div>
       <div class="card">
-        <h2>Monthly Income, Expenses, and Remaining Balance</h2>
+        <h2>Monthly Income, Expenses, Savings, Investing, and Remaining Balance</h2>
         <div class="table-wrap">
           <table>
             <thead>
@@ -418,6 +420,8 @@ body.dark .pie {
                 <th>Month</th>
                 <th>Income</th>
                 <th>Expenses</th>
+                <th>Savings</th>
+                <th>Investing</th>
                 <th>Remaining</th>
               </tr>
             </thead>
@@ -433,15 +437,7 @@ body.dark .pie {
           <select id="budgetMonth"></select>
         </label>
 
-        <div class="pie-layout section">
-          <div class="pie"></div>
-          <div id="budgetMethodBreakdown"></div>
-        </div>
-      </div>
-
-      <div class="section card">
-        <h2>2026 Sinking Funds</h2>
-        <div id="currentSinkingFunds"></div>
+        <div id="budgetMethodBreakdown" class="budget-progress-group section"></div>
       </div>
 
       <div class="section mini-grid">
@@ -527,6 +523,11 @@ body.dark .pie {
         <h2>Credit Card Spend</h2>
         <div id="cardSpend"></div>
       </div>
+
+      <div class="section card">
+        <h2>2026 Sinking Funds</h2>
+        <div id="currentSinkingFunds"></div>
+      </div>
     </div>
   </section>
 </main>
@@ -535,12 +536,12 @@ body.dark .pie {
 const STORAGE_KEY = "budgetAddedTransactions2026";
 
 const historicalMonthly = [
-  { month: "2026-01", income: 4737.23, expenses: 2078.26 },
-  { month: "2026-02", income: 3459.39, expenses: 2013.99 },
-  { month: "2026-03", income: 3666.86, expenses: 2160.46 },
-  { month: "2026-04", income: 3973.37, expenses: 1735.28 },
-  { month: "2026-05", income: 3289.61, expenses: 1782.47 },
-  { month: "2026-06", income: 0, expenses: 0 }
+  { month: "2026-01", income: 4737.23, expenses: 2078.26, savings: 422.20, investing: 1548.62 },
+  { month: "2026-02", income: 3459.39, expenses: 2013.99, savings: 189.74, investing: 1259.41 },
+  { month: "2026-03", income: 3666.86, expenses: 2160.46, savings: 575, investing: 824.36 },
+  { month: "2026-04", income: 3973.37, expenses: 1735.28, savings: 1025, investing: 1061.56 },
+  { month: "2026-05", income: 3289.61, expenses: 1782.47, savings: 925, investing: 566.04 },
+  { month: "2026-06", income: 0, expenses: 0, savings: 0, investing: 0 }
 ];
 
 const currentSinkingFunds = [
@@ -575,10 +576,7 @@ const themeToggle = document.getElementById("themeToggle");
 dateInput.valueAsDate = new Date();
 
 const savedTheme = localStorage.getItem("budgetTheme");
-
-if (savedTheme === "dark") {
-  document.body.classList.add("dark");
-}
+if (savedTheme === "dark") document.body.classList.add("dark");
 
 themeToggle.addEventListener("click", () => {
   document.body.classList.toggle("dark");
@@ -645,7 +643,9 @@ function getMonthlyData() {
   historicalMonthly.forEach(item => {
     monthly[item.month] = {
       income: item.income,
-      expenses: item.expenses
+      expenses: item.expenses,
+      savings: item.savings || 0,
+      investing: item.investing || 0
     };
   });
 
@@ -653,12 +653,26 @@ function getMonthlyData() {
     const month = item.date.slice(0, 7);
 
     if (!monthly[month]) {
-      monthly[month] = { income: 0, expenses: 0 };
+      monthly[month] = {
+        income: 0,
+        expenses: 0,
+        savings: 0,
+        investing: 0
+      };
     }
 
-    if (item.type === "income") {
-      monthly[month].income += Number(item.amount);
-    } else if (item.type === "expense" || item.type === "investing" || item.type === "sinking") {
+    if (item.type === "income") monthly[month].income += Number(item.amount);
+    if (item.type === "expense") monthly[month].expenses += Number(item.amount);
+
+    if (item.type === "investing" && ["Roth IRA", "Acorns"].includes(item.category)) {
+      monthly[month].investing += Number(item.amount);
+    }
+
+    if (item.type === "sinking" && item.sinkingAction === "add") {
+      monthly[month].savings += Number(item.amount);
+    }
+
+    if (item.type === "sinking" && item.sinkingAction === "subtract") {
       monthly[month].expenses += Number(item.amount);
     }
   });
@@ -668,12 +682,15 @@ function getMonthlyData() {
 
 function renderSummary() {
   const monthly = getMonthlyData();
+
   const totalIncome = Object.values(monthly).reduce((sum, item) => sum + item.income, 0);
   const totalExpenses = Object.values(monthly).reduce((sum, item) => sum + item.expenses, 0);
-  const remaining = totalIncome - totalExpenses;
+  const totalSavings = Object.values(monthly).reduce((sum, item) => sum + item.savings, 0);
+  const totalInvesting = Object.values(monthly).reduce((sum, item) => sum + item.investing, 0);
+  const remaining = totalIncome - totalExpenses - totalSavings - totalInvesting;
 
   document.getElementById("totalIncome").textContent = money(totalIncome);
-  document.getElementById("totalExpenses").textContent = money(totalExpenses);
+  document.getElementById("totalExpenses").textContent = money(totalExpenses + totalSavings + totalInvesting);
   document.getElementById("remainingBalance").textContent = money(remaining);
   document.getElementById("remainingBalance").className = "amount " + (remaining >= 0 ? "positive" : "negative");
 }
@@ -686,13 +703,17 @@ function renderMonthlySummary() {
     .map(month => {
       const income = monthly[month].income;
       const expenses = monthly[month].expenses;
-      const remaining = income - expenses;
+      const savings = monthly[month].savings;
+      const investing = monthly[month].investing;
+      const remaining = income - expenses - savings - investing;
 
       return `
         <tr>
           <td>${monthLabel(month)}</td>
           <td class="positive">${money(income)}</td>
           <td class="negative">${money(expenses)}</td>
+          <td class="negative">${money(savings)}</td>
+          <td class="negative">${money(investing)}</td>
           <td class="${remaining >= 0 ? "positive" : "negative"}">${money(remaining)}</td>
         </tr>
       `;
@@ -714,6 +735,28 @@ function renderBudgetMonthOptions() {
   } else {
     budgetMonthInput.value = Object.keys(monthly).sort().at(-1);
   }
+}
+
+function progressBar(label, description, spent, budget) {
+  const percent = budget > 0 ? (spent / budget) * 100 : 0;
+  const capped = Math.min(percent, 100);
+  const overClass = percent > 100 ? "over" : "";
+
+  return `
+    <div class="progress-card" title="${label}: ${money(spent)} used of ${money(budget)}">
+      <div class="progress-top">
+        <div>
+          <div class="progress-title">${label}</div>
+          <div class="small">${description}</div>
+        </div>
+        <strong>${money(spent)} / ${money(budget)}</strong>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill ${overClass}" style="width:${capped}%"></div>
+      </div>
+      <div class="small">${percent.toFixed(1)}% used</div>
+    </div>
+  `;
 }
 
 function renderBudgetMethod() {
@@ -752,26 +795,10 @@ function renderBudgetMethod() {
 
   document.getElementById("budgetMethodBreakdown").innerHTML = `
     <div class="small">Based on ${money(income)} income for ${monthLabel(month)}.</div>
-
-    <div class="legend-item">
-      <span><span class="legend-dot" style="background:#2563eb"></span>50% Needs: Rent, Utilities, Food, Essentials</span>
-      <strong>${money(essentialsSpent)} / ${money(essentialsBudget)}</strong>
-    </div>
-
-    <div class="legend-item">
-      <span><span class="legend-dot" style="background:#38bdf8"></span>20% Investing: Roth IRA, Acorns</span>
-      <strong>${money(investingSpent)} / ${money(investingBudget)}</strong>
-    </div>
-
-    <div class="legend-item">
-      <span><span class="legend-dot" style="background:#93c5fd"></span>20% Wants</span>
-      <strong>${money(wantsSpent)} / ${money(wantsBudget)}</strong>
-    </div>
-
-    <div class="legend-item">
-      <span><span class="legend-dot" style="background:#1e40af"></span>10% Tithe</span>
-      <strong>${money(titheSpent)} / ${money(titheBudget)}</strong>
-    </div>
+    ${progressBar("50% Needs", "Rent, Utilities, Food, Essentials", essentialsSpent, essentialsBudget)}
+    ${progressBar("20% Investing", "Roth IRA, Acorns", investingSpent, investingBudget)}
+    ${progressBar("20% Wants", "Wants", wantsSpent, wantsBudget)}
+    ${progressBar("10% Tithe", "Tithe", titheSpent, titheBudget)}
   `;
 }
 
@@ -920,8 +947,8 @@ function render() {
   renderMonthlySummary();
   renderBudgetMonthOptions();
   renderBudgetMethod();
-  renderSinkingFunds();
   renderTransactionTables();
+  renderSinkingFunds();
 
   renderGroupedList(
     "cardSpend",
@@ -948,8 +975,11 @@ form.addEventListener("submit", event => {
   });
 
   save();
+
   form.reset();
+  typeInput.value = type;
   dateInput.valueAsDate = new Date();
+
   updateDynamicFields();
   render();
 });
