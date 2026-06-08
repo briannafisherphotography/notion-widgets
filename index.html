@@ -1,4 +1,4 @@
-<!-- Full updated HTML with Google Sheets sync, dark mode, dynamic fields, monthly savings/investing columns, progress-bar budget breakdown, and transaction type memory -->
+<!-- Full updated HTML with Google Sheets sync, flexible sheet headers, dark mode, dynamic fields, monthly savings/investing columns, progress-bar budget breakdown, and transaction type memory -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -548,17 +548,29 @@ const BUDGET_YEAR = "2026";
 
 const MONTH_NAME_TO_KEY = {
   january: "2026-01",
+  jan: "2026-01",
   february: "2026-02",
+  feb: "2026-02",
   march: "2026-03",
+  mar: "2026-03",
   april: "2026-04",
+  apr: "2026-04",
   may: "2026-05",
   june: "2026-06",
+  jun: "2026-06",
   july: "2026-07",
+  jul: "2026-07",
   august: "2026-08",
+  aug: "2026-08",
   september: "2026-09",
+  sep: "2026-09",
+  sept: "2026-09",
   october: "2026-10",
+  oct: "2026-10",
   november: "2026-11",
-  december: "2026-12"
+  nov: "2026-11",
+  december: "2026-12",
+  dec: "2026-12"
 };
 
 const MONTH_KEY_TO_NAME = {
@@ -575,7 +587,7 @@ const MONTH_KEY_TO_NAME = {
   "2026-11": "November",
   "2026-12": "December"
 };
-  
+
 let historicalMonthly = [
   { month: "2026-01", income: 4737.23, expenses: 2078.26, savings: 422.20, investing: 1548.62 },
   { month: "2026-02", income: 3459.39, expenses: 2013.99, savings: 189.74, investing: 1259.41 },
@@ -647,10 +659,41 @@ function numberFromSheet(value) {
   return Number(String(value).replace(/[$,]/g, "")) || 0;
 }
 
+function keyify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function getField(item, possibleNames, fallback = "") {
+  if (!item) return fallback;
+
+  for (const name of possibleNames) {
+    if (Object.prototype.hasOwnProperty.call(item, name)) {
+      return item[name];
+    }
+  }
+
+  const normalizedMap = {};
+  Object.keys(item).forEach(key => {
+    normalizedMap[keyify(key)] = item[key];
+  });
+
+  for (const name of possibleNames) {
+    const normalized = keyify(name);
+    if (Object.prototype.hasOwnProperty.call(normalizedMap, normalized)) {
+      return normalizedMap[normalized];
+    }
+  }
+
+  return fallback;
+}
+
 function normalizeDate(value) {
   if (!value) return "";
 
-  const stringValue = String(value);
+  const stringValue = String(value).trim();
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(stringValue)) {
     return stringValue;
@@ -669,17 +712,87 @@ function normalizeDate(value) {
   return stringValue;
 }
 
+function normalizeMonthKey(value) {
+  if (!value) return "";
+
+  const raw = String(value).trim();
+  const lower = raw.toLowerCase();
+
+  if (/^\d{4}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw.slice(0, 7);
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}t/i.test(raw)) {
+    return raw.slice(0, 7);
+  }
+
+  if (MONTH_NAME_TO_KEY[lower]) {
+    return MONTH_NAME_TO_KEY[lower];
+  }
+
+  const cleaned = lower.replace(/[^a-z]/g, "");
+  if (MONTH_NAME_TO_KEY[cleaned]) {
+    return MONTH_NAME_TO_KEY[cleaned];
+  }
+
+  const date = new Date(raw);
+
+  if (!isNaN(date.getTime())) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  return "";
+}
+
+function monthLabel(monthValue) {
+  const key = normalizeMonthKey(monthValue);
+  return MONTH_KEY_TO_NAME[key] || String(monthValue || "");
+}
+
+function normalizeSinkingName(value) {
+  const raw = String(value || "").trim();
+
+  const aliases = {
+    miscellaneous: "Miscellanous",
+    miscellanous: "Miscellanous",
+    misc: "Miscellanous",
+    technology: "Technology",
+    tech: "Technology",
+    computer: "Technology",
+    gifts: "Gifts",
+    gift: "Gifts",
+    vacations: "Vacations",
+    vacation: "Vacations",
+    travel: "Vacations",
+    wedding: "Wedding",
+    christmas: "Christmas",
+    carmaintenance: "Car Maintenance",
+    car: "Car Maintenance",
+    cameragear: "Camera Gear",
+    camera: "Camera Gear",
+    health: "Health",
+    medical: "Health",
+    emergency: "Emergency"
+  };
+
+  return aliases[keyify(raw)] || raw;
+}
+
 function normalizeTransaction(item) {
   return {
-    id: item.id || crypto.randomUUID(),
-    type: item.type || "",
-    date: normalizeDate(item.date),
-    description: item.description || "",
-    category: item.category || "",
-    sinkingAction: item.sinkingAction || "",
-    person: item.person || "",
-    method: item.method || "",
-    amount: numberFromSheet(item.amount)
+    id: getField(item, ["id", "ID"], crypto.randomUUID()),
+    type: String(getField(item, ["type", "Type"], "")).trim().toLowerCase(),
+    date: normalizeDate(getField(item, ["date", "Date"], "")),
+    description: getField(item, ["description", "Description", "desc"], ""),
+    category: normalizeSinkingName(getField(item, ["category", "Category"], "")),
+    sinkingAction: String(getField(item, ["sinkingAction", "Sinking Action", "action", "Action"], "")).trim().toLowerCase(),
+    person: getField(item, ["person", "Person"], ""),
+    method: getField(item, ["method", "Method", "paymentMethod", "Payment Method", "card", "Card"], ""),
+    amount: numberFromSheet(getField(item, ["amount", "Amount"], 0))
   };
 }
 
@@ -702,20 +815,29 @@ async function loadDataFromGoogleSheet() {
     const response = await fetch(GOOGLE_SCRIPT_URL);
     const data = await response.json();
 
-    transactions = (data.transactions || []).map(normalizeTransaction);
+    const loadedTransactions = (data.transactions || []).map(normalizeTransaction);
+    transactions = loadedTransactions;
 
-    historicalMonthly = (data.historicalMonthly || historicalMonthly).map(item => ({
-      month: normalizeMonthKey(item.month),
-      income: numberFromSheet(item.income),
-      expenses: numberFromSheet(item.expenses),
-      savings: numberFromSheet(item.savings),
-      investing: numberFromSheet(item.investing)
+    const loadedHistoricalMonthly = (data.historicalMonthly || []).map(item => ({
+      month: normalizeMonthKey(getField(item, ["month", "Month"], "")),
+      income: numberFromSheet(getField(item, ["income", "Income"], 0)),
+      expenses: numberFromSheet(getField(item, ["expenses", "Expenses", "expense", "Expense"], 0)),
+      savings: numberFromSheet(getField(item, ["savings", "Savings", "saving", "Saving"], 0)),
+      investing: numberFromSheet(getField(item, ["investing", "Investing", "investment", "Investment"], 0))
     })).filter(item => item.month);
 
-    currentSinkingFunds = (data.sinkingFunds || currentSinkingFunds).map(item => ({
-      name: item.name || "",
-      current: numberFromSheet(item.current)
+    if (loadedHistoricalMonthly.length) {
+      historicalMonthly = loadedHistoricalMonthly;
+    }
+
+    const loadedSinkingFunds = (data.sinkingFunds || []).map(item => ({
+      name: normalizeSinkingName(getField(item, ["name", "Name", "sinkingFund", "Sinking Fund", "fund", "Fund", "category", "Category"], "")),
+      current: numberFromSheet(getField(item, ["current", "Current", "amount", "Amount", "balance", "Balance"], 0))
     })).filter(item => item.name);
+
+    if (loadedSinkingFunds.length) {
+      currentSinkingFunds = loadedSinkingFunds;
+    }
 
     saveLocal();
     render();
@@ -725,38 +847,6 @@ async function loadDataFromGoogleSheet() {
     setStatus("Could not load Google Sheet. Showing local browser data.");
     render();
   }
-}
-
-function normalizeMonthKey(value) {
-  if (!value) return "";
-
-  const raw = String(value).trim();
-  const lower = raw.toLowerCase();
-
-  if (/^\d{4}-\d{2}$/.test(raw)) {
-    return raw;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return raw.slice(0, 7);
-  }
-
-  if (MONTH_NAME_TO_KEY[lower]) {
-    return MONTH_NAME_TO_KEY[lower];
-  }
-
-  const date = new Date(raw);
-
-  if (!isNaN(date.getTime())) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-  }
-
-  return raw;
-}
-
-function monthLabel(monthValue) {
-  const key = normalizeMonthKey(monthValue);
-  return MONTH_KEY_TO_NAME[key] || monthValue;
 }
 
 function sumTransactions(filter) {
@@ -794,21 +884,22 @@ function updateDynamicFields() {
 function getMonthlyData() {
   const monthly = {};
 
- historicalMonthly.forEach(item => {
-  const monthKey = normalizeMonthKey(item.month);
+  historicalMonthly.forEach(item => {
+    const monthKey = normalizeMonthKey(item.month);
 
-  if (!monthKey) return;
+    if (!monthKey) return;
 
-  monthly[monthKey] = {
-    income: numberFromSheet(item.income),
-    expenses: numberFromSheet(item.expenses),
-    savings: numberFromSheet(item.savings),
-    investing: numberFromSheet(item.investing)
-  };
-});
+    monthly[monthKey] = {
+      income: numberFromSheet(item.income),
+      expenses: numberFromSheet(item.expenses),
+      savings: numberFromSheet(item.savings),
+      investing: numberFromSheet(item.investing)
+    };
+  });
 
   transactions.forEach(item => {
-    const month = item.date.slice(0, 7);
+    const date = normalizeDate(item.date);
+    const month = date ? date.slice(0, 7) : "";
 
     if (!month) return;
 
@@ -932,25 +1023,25 @@ function renderBudgetMethod() {
 
   const essentialsSpent = sumTransactions(item =>
     item.type === "expense" &&
-    item.date.slice(0, 7) === month &&
+    normalizeDate(item.date).slice(0, 7) === month &&
     ["Rent", "Utilities", "Food", "Essentials"].includes(item.category)
   );
 
   const investingSpent = sumTransactions(item =>
     item.type === "investing" &&
-    item.date.slice(0, 7) === month &&
+    normalizeDate(item.date).slice(0, 7) === month &&
     ["Roth IRA", "Acorns"].includes(item.category)
   );
 
   const wantsSpent = sumTransactions(item =>
     item.type === "expense" &&
-    item.date.slice(0, 7) === month &&
+    normalizeDate(item.date).slice(0, 7) === month &&
     item.category === "Wants"
   );
 
   const titheSpent = sumTransactions(item =>
     item.type === "expense" &&
-    item.date.slice(0, 7) === month &&
+    normalizeDate(item.date).slice(0, 7) === month &&
     item.category === "Tithe"
   );
 
@@ -963,19 +1054,28 @@ function renderBudgetMethod() {
   `;
 }
 
+function sinkingNameMatches(a, b) {
+  return keyify(normalizeSinkingName(a)) === keyify(normalizeSinkingName(b));
+}
+
 function renderSinkingFunds() {
   const container = document.getElementById("currentSinkingFunds");
+
+  if (!currentSinkingFunds.length) {
+    container.innerHTML = `<p class="small">No sinking funds found. Check your SinkingFunds tab headers.</p>`;
+    return;
+  }
 
   container.innerHTML = currentSinkingFunds.map(fund => {
     const additions = sumTransactions(item =>
       item.type === "sinking" &&
-      item.category === fund.name &&
+      sinkingNameMatches(item.category, fund.name) &&
       item.sinkingAction === "add"
     );
 
     const withdrawals = sumTransactions(item =>
       item.type === "sinking" &&
-      item.category === fund.name &&
+      sinkingNameMatches(item.category, fund.name) &&
       item.sinkingAction === "subtract"
     );
 
@@ -996,10 +1096,10 @@ function renderSinkingFunds() {
 function renderTransactionTables() {
   const incomeRows = transactions
     .filter(item => item.type === "income")
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .sort((a, b) => new Date(normalizeDate(b.date)) - new Date(normalizeDate(a.date)))
     .map(item => `
       <tr>
-        <td>${item.date}</td>
+        <td>${normalizeDate(item.date)}</td>
         <td>${item.description}</td>
         <td>${item.person}</td>
         <td class="positive">+${money(item.amount)}</td>
@@ -1010,10 +1110,10 @@ function renderTransactionTables() {
 
   const expenseRows = transactions
     .filter(item => item.type === "expense")
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .sort((a, b) => new Date(normalizeDate(b.date)) - new Date(normalizeDate(a.date)))
     .map(item => `
       <tr>
-        <td>${item.date}</td>
+        <td>${normalizeDate(item.date)}</td>
         <td>${item.description}</td>
         <td><span class="pill">${item.category}</span></td>
         <td>${item.person}</td>
@@ -1026,10 +1126,10 @@ function renderTransactionTables() {
 
   const investingRows = transactions
     .filter(item => item.type === "investing")
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .sort((a, b) => new Date(normalizeDate(b.date)) - new Date(normalizeDate(a.date)))
     .map(item => `
       <tr>
-        <td>${item.date}</td>
+        <td>${normalizeDate(item.date)}</td>
         <td>${item.description}</td>
         <td><span class="pill">${item.category}</span></td>
         <td>${item.person}</td>
@@ -1041,10 +1141,10 @@ function renderTransactionTables() {
 
   const sinkingRows = transactions
     .filter(item => item.type === "sinking")
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .sort((a, b) => new Date(normalizeDate(b.date)) - new Date(normalizeDate(a.date)))
     .map(item => `
       <tr>
-        <td>${item.date}</td>
+        <td>${normalizeDate(item.date)}</td>
         <td>${item.description}</td>
         <td>${item.sinkingAction === "add" ? "Add" : "Subtract"}</td>
         <td><span class="pill">${item.category}</span></td>
@@ -1104,6 +1204,10 @@ function deleteLocalTransaction(id) {
   setStatus("Deleted locally only. To delete from Google Sheet, remove the row in the Transactions tab.");
 }
 
+function saveLocal() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+}
+
 function render() {
   renderSummary();
   renderMonthlySummary();
@@ -1129,7 +1233,7 @@ form.addEventListener("submit", async event => {
     type,
     date: document.getElementById("date").value,
     description: document.getElementById("description").value.trim(),
-    category: type === "income" ? "" : document.getElementById("category").value,
+    category: type === "income" ? "" : normalizeSinkingName(document.getElementById("category").value),
     sinkingAction: type === "sinking"
       ? document.getElementById("sinkingAction").value
       : "",
