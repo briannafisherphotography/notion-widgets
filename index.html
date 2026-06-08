@@ -544,6 +544,38 @@ body.dark .pill {
 const STORAGE_KEY = "budgetAddedTransactions2026";
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpv-6ZW63Jz50E_pxWW1L2PVi0S9yiqDLA7aEJyrpTSbZd163HNwdxmblZgRQOpO28/exec";
 
+const BUDGET_YEAR = "2026";
+
+const MONTH_NAME_TO_KEY = {
+  january: "2026-01",
+  february: "2026-02",
+  march: "2026-03",
+  april: "2026-04",
+  may: "2026-05",
+  june: "2026-06",
+  july: "2026-07",
+  august: "2026-08",
+  september: "2026-09",
+  october: "2026-10",
+  november: "2026-11",
+  december: "2026-12"
+};
+
+const MONTH_KEY_TO_NAME = {
+  "2026-01": "January",
+  "2026-02": "February",
+  "2026-03": "March",
+  "2026-04": "April",
+  "2026-05": "May",
+  "2026-06": "June",
+  "2026-07": "July",
+  "2026-08": "August",
+  "2026-09": "September",
+  "2026-10": "October",
+  "2026-11": "November",
+  "2026-12": "December"
+};
+  
 let historicalMonthly = [
   { month: "2026-01", income: 4737.23, expenses: 2078.26, savings: 422.20, investing: 1548.62 },
   { month: "2026-02", income: 3459.39, expenses: 2013.99, savings: 189.74, investing: 1259.41 },
@@ -673,7 +705,7 @@ async function loadDataFromGoogleSheet() {
     transactions = (data.transactions || []).map(normalizeTransaction);
 
     historicalMonthly = (data.historicalMonthly || historicalMonthly).map(item => ({
-      month: item.month || "",
+      month: normalizeMonthKey(item.month),
       income: numberFromSheet(item.income),
       expenses: numberFromSheet(item.expenses),
       savings: numberFromSheet(item.savings),
@@ -695,12 +727,36 @@ async function loadDataFromGoogleSheet() {
   }
 }
 
-function monthLabel(monthString) {
-  const date = new Date(monthString + "-01T00:00:00");
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric"
-  });
+function normalizeMonthKey(value) {
+  if (!value) return "";
+
+  const raw = String(value).trim();
+  const lower = raw.toLowerCase();
+
+  if (/^\d{4}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw.slice(0, 7);
+  }
+
+  if (MONTH_NAME_TO_KEY[lower]) {
+    return MONTH_NAME_TO_KEY[lower];
+  }
+
+  const date = new Date(raw);
+
+  if (!isNaN(date.getTime())) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  return raw;
+}
+
+function monthLabel(monthValue) {
+  const key = normalizeMonthKey(monthValue);
+  return MONTH_KEY_TO_NAME[key] || monthValue;
 }
 
 function sumTransactions(filter) {
@@ -738,14 +794,18 @@ function updateDynamicFields() {
 function getMonthlyData() {
   const monthly = {};
 
-  historicalMonthly.forEach(item => {
-    monthly[item.month] = {
-      income: numberFromSheet(item.income),
-      expenses: numberFromSheet(item.expenses),
-      savings: numberFromSheet(item.savings),
-      investing: numberFromSheet(item.investing)
-    };
-  });
+ historicalMonthly.forEach(item => {
+  const monthKey = normalizeMonthKey(item.month);
+
+  if (!monthKey) return;
+
+  monthly[monthKey] = {
+    income: numberFromSheet(item.income),
+    expenses: numberFromSheet(item.expenses),
+    savings: numberFromSheet(item.savings),
+    investing: numberFromSheet(item.investing)
+  };
+});
 
   transactions.forEach(item => {
     const month = item.date.slice(0, 7);
