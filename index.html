@@ -1,4 +1,4 @@
-<!-- Full updated HTML with dark mode, dynamic fields, monthly savings/investing columns, progress-bar budget breakdown, and transaction type memory -->
+<!-- Full updated HTML with Google Sheets sync, dark mode, dynamic fields, monthly savings/investing columns, progress-bar budget breakdown, and transaction type memory -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -268,6 +268,12 @@ body.dark .pill {
   padding: 22px;
 }
 
+.status {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .budget-progress-group {
   display: grid;
   gap: 16px;
@@ -326,6 +332,7 @@ body.dark .pill {
     <h1>2026 Budget Dashboard</h1>
     <p class="subtitle">Adam and Brianna's Finance Tracker</p>
     <button type="button" id="themeToggle" class="theme-toggle">Toggle Dark Mode</button>
+    <div id="syncStatus" class="status">Loading budget data...</div>
   </header>
 
   <section class="summary">
@@ -334,7 +341,7 @@ body.dark .pill {
       <div class="amount positive" id="totalIncome">$0.00</div>
     </div>
     <div class="card">
-      <div class="label">2026 Expenses</div>
+      <div class="label">2026 Expenses, Savings, and Investing</div>
       <div class="amount negative" id="totalExpenses">$0.00</div>
     </div>
     <div class="card">
@@ -406,7 +413,8 @@ body.dark .pill {
         </label>
 
         <button type="submit">Add Transaction</button>
-        <button type="button" class="btn-light" id="clearAll">Clear Added Transactions</button>
+        <button type="button" class="btn-light" id="reloadSheet">Reload From Google Sheet</button>
+        <button type="button" class="btn-light" id="clearLocal">Clear Local Cache Only</button>
       </form>
     </div>
 
@@ -534,9 +542,7 @@ body.dark .pill {
 
 <script>
 const STORAGE_KEY = "budgetAddedTransactions2026";
-
-const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwpv-6ZW63Jz50E_pxWW1L2PVi0S9yiqDLA7aEJyrpTSbZd163HNwdxmblZgRQOpO28/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpv-6ZW63Jz50E_pxWW1L2PVi0S9yiqDLA7aEJyrpTSbZd163HNwdxmblZgRQOpO28/exec";
 
 let historicalMonthly = [
   { month: "2026-01", income: 4737.23, expenses: 2078.26, savings: 422.20, investing: 1548.62 },
@@ -575,6 +581,9 @@ const sinkingActionField = document.getElementById("sinkingActionField");
 const paymentMethodField = document.getElementById("paymentMethodField");
 const budgetMonthInput = document.getElementById("budgetMonth");
 const themeToggle = document.getElementById("themeToggle");
+const syncStatus = document.getElementById("syncStatus");
+const reloadSheetButton = document.getElementById("reloadSheet");
+const clearLocalButton = document.getElementById("clearLocal");
 
 dateInput.valueAsDate = new Date();
 
@@ -589,15 +598,101 @@ themeToggle.addEventListener("click", () => {
   );
 });
 
+function setStatus(message) {
+  syncStatus.textContent = message;
+}
+
 function money(value) {
-  return Number(value).toLocaleString("en-US", {
+  return Number(value || 0).toLocaleString("en-US", {
     style: "currency",
     currency: "USD"
   });
 }
 
-function save() {
+function numberFromSheet(value) {
+  if (typeof value === "number") return value;
+  if (value === null || value === undefined || value === "") return 0;
+  return Number(String(value).replace(/[$,]/g, "")) || 0;
+}
+
+function normalizeDate(value) {
+  if (!value) return "";
+
+  const stringValue = String(value);
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stringValue)) {
+    return stringValue;
+  }
+
+  if (/^\d{4}-\d{2}/.test(stringValue)) {
+    return stringValue.slice(0, 10);
+  }
+
+  const date = new Date(value);
+
+  if (!isNaN(date.getTime())) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  return stringValue;
+}
+
+function normalizeTransaction(item) {
+  return {
+    id: item.id || crypto.randomUUID(),
+    type: item.type || "",
+    date: normalizeDate(item.date),
+    description: item.description || "",
+    category: item.category || "",
+    sinkingAction: item.sinkingAction || "",
+    person: item.person || "",
+    method: item.method || "",
+    amount: numberFromSheet(item.amount)
+  };
+}
+
+function saveLocal() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+}
+
+async function saveTransactionToGoogleSheet(transaction) {
+  await fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    body: JSON.stringify(transaction)
+  });
+}
+
+async function loadDataFromGoogleSheet() {
+  try {
+    setStatus("Loading from Google Sheet...");
+
+    const response = await fetch(GOOGLE_SCRIPT_URL);
+    const data = await response.json();
+
+    transactions = (data.transactions || []).map(normalizeTransaction);
+
+    historicalMonthly = (data.historicalMonthly || historicalMonthly).map(item => ({
+      month: item.month || "",
+      income: numberFromSheet(item.income),
+      expenses: numberFromSheet(item.expenses),
+      savings: numberFromSheet(item.savings),
+      investing: numberFromSheet(item.investing)
+    })).filter(item => item.month);
+
+    currentSinkingFunds = (data.sinkingFunds || currentSinkingFunds).map(item => ({
+      name: item.name || "",
+      current: numberFromSheet(item.current)
+    })).filter(item => item.name);
+
+    saveLocal();
+    render();
+    setStatus("Synced with Google Sheet.");
+  } catch (error) {
+    console.error("Google Sheet load failed:", error);
+    setStatus("Could not load Google Sheet. Showing local browser data.");
+    render();
+  }
 }
 
 function monthLabel(monthString) {
@@ -645,15 +740,17 @@ function getMonthlyData() {
 
   historicalMonthly.forEach(item => {
     monthly[item.month] = {
-      income: item.income,
-      expenses: item.expenses,
-      savings: item.savings || 0,
-      investing: item.investing || 0
+      income: numberFromSheet(item.income),
+      expenses: numberFromSheet(item.expenses),
+      savings: numberFromSheet(item.savings),
+      investing: numberFromSheet(item.investing)
     };
   });
 
   transactions.forEach(item => {
     const month = item.date.slice(0, 7);
+
+    if (!month) return;
 
     if (!monthly[month]) {
       monthly[month] = {
@@ -737,7 +834,7 @@ function renderBudgetMonthOptions() {
   if (currentValue && monthly[currentValue]) {
     budgetMonthInput.value = currentValue;
   } else {
-    budgetMonthInput.value = Object.keys(monthly).sort().at(-1);
+    budgetMonthInput.value = Object.keys(monthly).sort().at(-1) || "";
   }
 }
 
@@ -798,7 +895,7 @@ function renderBudgetMethod() {
   );
 
   document.getElementById("budgetMethodBreakdown").innerHTML = `
-    <div class="small">Based on ${money(income)} income for ${monthLabel(month)}.</div>
+    <div class="small">Based on ${money(income)} income for ${month ? monthLabel(month) : "selected month"}.</div>
     ${progressBar("50% Needs", "Rent, Utilities, Food, Essentials", essentialsSpent, essentialsBudget)}
     ${progressBar("20% Investing", "Roth IRA, Acorns", investingSpent, investingBudget)}
     ${progressBar("20% Wants", "Wants", wantsSpent, wantsBudget)}
@@ -822,7 +919,7 @@ function renderSinkingFunds() {
       item.sinkingAction === "subtract"
     );
 
-    const current = fund.current + additions - withdrawals;
+    const current = Number(fund.current) + additions - withdrawals;
 
     return `
       <div class="fund-row">
@@ -846,7 +943,7 @@ function renderTransactionTables() {
         <td>${item.description}</td>
         <td>${item.person}</td>
         <td class="positive">+${money(item.amount)}</td>
-        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
@@ -862,7 +959,7 @@ function renderTransactionTables() {
         <td>${item.person}</td>
         <td>${item.method}</td>
         <td class="negative">-${money(item.amount)}</td>
-        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
@@ -877,7 +974,7 @@ function renderTransactionTables() {
         <td><span class="pill">${item.category}</span></td>
         <td>${item.person}</td>
         <td class="negative">-${money(item.amount)}</td>
-        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
@@ -895,22 +992,22 @@ function renderTransactionTables() {
         <td class="${item.sinkingAction === "add" ? "positive" : "negative"}">
           ${item.sinkingAction === "add" ? "+" : "-"}${money(item.amount)}
         </td>
-        <td><button class="btn-danger" onclick="deleteTransaction('${item.id}')">Delete</button></td>
+        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
 
   document.getElementById("incomeTransactions").innerHTML =
-    incomeRows || `<tr><td colspan="5" class="empty">No added income transactions yet.</td></tr>`;
+    incomeRows || `<tr><td colspan="5" class="empty">No income transactions yet.</td></tr>`;
 
   document.getElementById("expenseTransactions").innerHTML =
-    expenseRows || `<tr><td colspan="7" class="empty">No added expense transactions yet.</td></tr>`;
+    expenseRows || `<tr><td colspan="7" class="empty">No expense transactions yet.</td></tr>`;
 
   document.getElementById("investingTransactions").innerHTML =
-    investingRows || `<tr><td colspan="6" class="empty">No added investing transactions yet.</td></tr>`;
+    investingRows || `<tr><td colspan="6" class="empty">No investing transactions yet.</td></tr>`;
 
   document.getElementById("sinkingTransactions").innerHTML =
-    sinkingRows || `<tr><td colspan="7" class="empty">No added sinking fund transactions yet.</td></tr>`;
+    sinkingRows || `<tr><td colspan="7" class="empty">No sinking fund transactions yet.</td></tr>`;
 }
 
 function renderGroupedList(id, groupedData, emptyMessage) {
@@ -940,10 +1037,11 @@ function groupBy(key, filter) {
   }, {});
 }
 
-function deleteTransaction(id) {
+function deleteLocalTransaction(id) {
   transactions = transactions.filter(item => item.id !== id);
-  save();
+  saveLocal();
   render();
+  setStatus("Deleted locally only. To delete from Google Sheet, remove the row in the Transactions tab.");
 }
 
 function render() {
@@ -966,78 +1064,59 @@ form.addEventListener("submit", async event => {
 
   const type = typeInput.value;
 
-const transaction = {
-  id: crypto.randomUUID(),
-  type,
-  date: document.getElementById("date").value,
-  description: document.getElementById("description").value.trim(),
-  category: type === "income" ? "" : document.getElementById("category").value,
-  sinkingAction: type === "sinking"
-    ? document.getElementById("sinkingAction").value
-    : "",
-  person: document.getElementById("person").value,
-  method: type === "expense"
-    ? document.getElementById("method").value
-    : "",
-  amount: Number(document.getElementById("amount").value)
-};
+  const transaction = {
+    id: crypto.randomUUID(),
+    type,
+    date: document.getElementById("date").value,
+    description: document.getElementById("description").value.trim(),
+    category: type === "income" ? "" : document.getElementById("category").value,
+    sinkingAction: type === "sinking"
+      ? document.getElementById("sinkingAction").value
+      : "",
+    person: document.getElementById("person").value,
+    method: type === "expense"
+      ? document.getElementById("method").value
+      : "",
+    amount: Number(document.getElementById("amount").value)
+  };
 
-transactions.push(transaction);
+  transactions.push(transaction);
+  saveLocal();
+  render();
 
-await saveTransactionToGoogleSheet(transaction);
+  setStatus("Saving to Google Sheet...");
 
-  save();
-
-async function saveTransactionToGoogleSheet(transaction) {
   try {
-    await fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(transaction)
-    });
+    await saveTransactionToGoogleSheet(transaction);
+
+    await new Promise(resolve => setTimeout(resolve, 700));
+
+    await loadDataFromGoogleSheet();
+
+    setStatus("Saved and synced with Google Sheet.");
   } catch (error) {
     console.error("Google Sheet save failed:", error);
+    setStatus("Saved locally, but Google Sheet sync failed.");
   }
-}
 
-async function loadDataFromGoogleSheet() {
-  try {
-    const response = await fetch(GOOGLE_SCRIPT_URL);
-    const data = await response.json();
-
-    transactions = data.transactions || [];
-
-    historicalMonthly = (data.historicalMonthly || historicalMonthly).map(item => ({
-      month: item.month,
-      income: Number(item.income || 0),
-      expenses: Number(item.expenses || 0),
-      savings: Number(item.savings || 0),
-      investing: Number(item.investing || 0)
-    }));
-
-    currentSinkingFunds = (data.sinkingFunds || currentSinkingFunds).map(item => ({
-      name: item.name,
-      current: Number(item.current || 0)
-    }));
-
-    render();
-  } catch (error) {
-    console.error("Google Sheet load failed:", error);
-    render();
-  }
-}
+  form.reset();
+  typeInput.value = type;
+  dateInput.valueAsDate = new Date();
 
   updateDynamicFields();
-loadDataFromGoogleSheet();
+  render();
 });
 
-document.getElementById("clearAll").addEventListener("click", () => {
-  if (confirm("Clear only the transactions you added in this app?")) {
+reloadSheetButton.addEventListener("click", () => {
+  loadDataFromGoogleSheet();
+});
+
+clearLocalButton.addEventListener("click", () => {
+  if (confirm("Clear local browser cache only? This will not delete your Google Sheet data.")) {
     transactions = [];
-    save();
+    localStorage.removeItem(STORAGE_KEY);
     render();
+    setStatus("Local cache cleared. Reload from Google Sheet to restore synced data.");
   }
 });
 
@@ -1045,7 +1124,7 @@ typeInput.addEventListener("change", updateDynamicFields);
 budgetMonthInput.addEventListener("change", renderBudgetMethod);
 
 updateDynamicFields();
-render();
+loadDataFromGoogleSheet();
 </script>
 </body>
 </html>
