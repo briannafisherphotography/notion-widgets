@@ -535,7 +535,10 @@ body.dark .pill {
 <script>
 const STORAGE_KEY = "budgetAddedTransactions2026";
 
-const historicalMonthly = [
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbwpv-6ZW63Jz50E_pxWW1L2PVi0S9yiqDLA7aEJyrpTSbZd163HNwdxmblZgRQOpO28/exec";
+
+let historicalMonthly = [
   { month: "2026-01", income: 4737.23, expenses: 2078.26, savings: 422.20, investing: 1548.62 },
   { month: "2026-02", income: 3459.39, expenses: 2013.99, savings: 189.74, investing: 1259.41 },
   { month: "2026-03", income: 3666.86, expenses: 2160.46, savings: 575, investing: 824.36 },
@@ -544,7 +547,7 @@ const historicalMonthly = [
   { month: "2026-06", income: 0, expenses: 0, savings: 0, investing: 0 }
 ];
 
-const currentSinkingFunds = [
+let currentSinkingFunds = [
   { name: "Miscellanous", current: 3007.65 },
   { name: "Gifts", current: 157.68 },
   { name: "Technology", current: 167.70 },
@@ -958,31 +961,66 @@ function render() {
   );
 }
 
-form.addEventListener("submit", event => {
+form.addEventListener("submit", async event => {
   event.preventDefault();
 
   const type = typeInput.value;
 
-  transactions.push({
-    id: crypto.randomUUID(),
-    type,
-    date: document.getElementById("date").value,
-    description: document.getElementById("description").value.trim(),
-    category: type === "income" ? "" : document.getElementById("category").value,
-    sinkingAction: type === "sinking" ? document.getElementById("sinkingAction").value : "",
-    person: document.getElementById("person").value,
-    method: type === "expense" ? document.getElementById("method").value : "",
-    amount: Number(document.getElementById("amount").value)
-  });
+const transaction = {
+  id: crypto.randomUUID(),
+  type,
+  date: document.getElementById("date").value,
+  description: document.getElementById("description").value.trim(),
+  category: type === "income" ? "" : document.getElementById("category").value,
+  sinkingAction: type === "sinking"
+    ? document.getElementById("sinkingAction").value
+    : "",
+  person: document.getElementById("person").value,
+  method: type === "expense"
+    ? document.getElementById("method").value
+    : "",
+  amount: Number(document.getElementById("amount").value)
+};
+
+transactions.push(transaction);
+
+await saveTransactionToGoogleSheet(transaction);
 
   save();
 
-  form.reset();
-  typeInput.value = type;
-  dateInput.valueAsDate = new Date();
+async function saveTransactionToGoogleSheet(transaction) {
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(transaction)
+    });
+  } catch (error) {
+    console.error("Google Sheet save failed:", error);
+  }
+}
+
+async function loadDataFromGoogleSheet() {
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL);
+    const data = await response.json();
+
+    transactions = data.transactions || [];
+    historicalMonthly = data.historicalMonthly || historicalMonthly;
+    currentSinkingFunds = data.sinkingFunds || currentSinkingFunds;
+
+    render();
+  } catch (error) {
+    console.error("Google Sheet load failed:", error);
+
+    render();
+  }
+}
 
   updateDynamicFields();
-  render();
+loadDataFromGoogleSheet();
 });
 
 document.getElementById("clearAll").addEventListener("click", () => {
