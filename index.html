@@ -1008,13 +1008,23 @@ async function loadDataFromGoogleSheet() {
     const data = await response.json();
 
     transactions = data.transactions || [];
-    historicalMonthly = data.historicalMonthly || historicalMonthly;
-    currentSinkingFunds = data.sinkingFunds || currentSinkingFunds;
+
+    historicalMonthly = (data.historicalMonthly || historicalMonthly).map(item => ({
+      month: item.month,
+      income: Number(item.income || 0),
+      expenses: Number(item.expenses || 0),
+      savings: Number(item.savings || 0),
+      investing: Number(item.investing || 0)
+    }));
+
+    currentSinkingFunds = (data.sinkingFunds || currentSinkingFunds).map(item => ({
+      name: item.name,
+      current: Number(item.current || 0)
+    }));
 
     render();
   } catch (error) {
     console.error("Google Sheet load failed:", error);
-
     render();
   }
 }
