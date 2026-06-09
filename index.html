@@ -1,5 +1,3 @@
-<!-- Full updated HTML with Google Sheets sync, flexible sheet headers, dark mode, dynamic fields, monthly savings/investing columns, progress-bar budget breakdown, and transaction type memory -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,6 +73,12 @@ h1 {
 .subtitle {
   color: var(--muted);
   margin-top: 8px;
+}
+
+.status {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .card {
@@ -156,11 +160,6 @@ body.dark select {
   border-color: var(--border);
 }
 
-input:focus, select:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
-}
-
 button {
   border: 0;
   border-radius: 13px;
@@ -186,18 +185,6 @@ button:hover { opacity: 0.9; }
 body.dark .btn-light {
   background: #172554;
   color: #bfdbfe;
-}
-
-.btn-danger {
-  background: #fee2e2;
-  color: var(--red);
-  padding: 7px 10px;
-  font-size: 12px;
-}
-
-body.dark .btn-danger {
-  background: #3f1d2a;
-  color: #fb7185;
 }
 
 .table-wrap { overflow-x: auto; }
@@ -268,12 +255,6 @@ body.dark .pill {
   padding: 22px;
 }
 
-.status {
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .budget-progress-group {
   display: grid;
   gap: 16px;
@@ -308,10 +289,8 @@ body.dark .pill {
 
 .progress-fill {
   height: 100%;
-  width: 0%;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--blue-dark), var(--blue), var(--sky));
-  transition: width 0.25s ease;
 }
 
 .progress-fill.over {
@@ -414,7 +393,6 @@ body.dark .pill {
 
         <button type="submit">Add Transaction</button>
         <button type="button" class="btn-light" id="reloadSheet">Reload From Google Sheet</button>
-        <button type="button" class="btn-light" id="clearLocal">Clear Local Cache Only</button>
       </form>
     </div>
 
@@ -440,11 +418,9 @@ body.dark .pill {
 
       <div class="section card">
         <h2>Budget Breakdown</h2>
-
         <label>View Month
           <select id="budgetMonth"></select>
         </label>
-
         <div id="budgetMethodBreakdown" class="budget-progress-group section"></div>
       </div>
 
@@ -459,7 +435,6 @@ body.dark .pill {
                   <th>Description</th>
                   <th>Person</th>
                   <th>Amount</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody id="incomeTransactions"></tbody>
@@ -479,7 +454,6 @@ body.dark .pill {
                   <th>Person</th>
                   <th>Payment</th>
                   <th>Amount</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody id="expenseTransactions"></tbody>
@@ -499,7 +473,6 @@ body.dark .pill {
                 <th>Category</th>
                 <th>Person</th>
                 <th>Amount</th>
-                <th></th>
               </tr>
             </thead>
             <tbody id="investingTransactions"></tbody>
@@ -519,7 +492,6 @@ body.dark .pill {
                 <th>Category</th>
                 <th>Person</th>
                 <th>Amount</th>
-                <th></th>
               </tr>
             </thead>
             <tbody id="sinkingTransactions"></tbody>
@@ -541,10 +513,7 @@ body.dark .pill {
 </main>
 
 <script>
-const STORAGE_KEY = "budgetAddedTransactions2026";
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpv-6ZW63Jz50E_pxWW1L2PVi0S9yiqDLA7aEJyrpTSbZd163HNwdxmblZgRQOpO28/exec";
-
-const BUDGET_YEAR = "2026";
 
 const MONTH_NAME_TO_KEY = {
   january: "2026-01",
@@ -588,16 +557,16 @@ const MONTH_KEY_TO_NAME = {
   "2026-12": "December"
 };
 
-let historicalMonthly = [
-  { month: "2026-01", income: 4737.23, expenses: 2078.26, savings: 422.20, investing: 1548.62 },
-  { month: "2026-02", income: 3459.39, expenses: 2013.99, savings: 189.74, investing: 1259.41 },
-  { month: "2026-03", income: 3666.86, expenses: 2160.46, savings: 575, investing: 824.36 },
-  { month: "2026-04", income: 3973.37, expenses: 1735.28, savings: 1025, investing: 1061.56 },
-  { month: "2026-05", income: 3289.61, expenses: 1782.47, savings: 925, investing: 566.04 },
-  { month: "2026-06", income: 0, expenses: 0, savings: 0, investing: 0 }
+const DEFAULT_HISTORICAL_MONTHLY = [
+  { month: "January", income: 4737.23, expenses: 2078.26, savings: 422.20, investing: 1548.62, remaining: 688.15 },
+  { month: "February", income: 3459.39, expenses: 2013.99, savings: 189.74, investing: 1259.41, remaining: -3.75 },
+  { month: "March", income: 3666.86, expenses: 2160.46, savings: 575, investing: 824.36, remaining: 107.04 },
+  { month: "April", income: 3973.37, expenses: 1735.28, savings: 1025, investing: 1061.56, remaining: 151.53 },
+  { month: "May", income: 3289.61, expenses: 1782.47, savings: 925, investing: 566.04, remaining: 16.10 },
+  { month: "June", income: 0, expenses: 0, savings: 0, investing: 0, remaining: 0 }
 ];
 
-let currentSinkingFunds = [
+const DEFAULT_SINKING_FUNDS = [
   { name: "Miscellanous", current: 3007.65 },
   { name: "Gifts", current: 157.68 },
   { name: "Technology", current: 167.70 },
@@ -611,10 +580,11 @@ let currentSinkingFunds = [
 ];
 
 const expenseCategories = ["Rent", "Utilities", "Essentials", "Food", "Health", "Wants", "Tithe"];
-const sinkingCategories = ["Miscellanous", "Gifts", "Technology", "Vacations", "Wedding", "Christmas", "Car Maintenance", "Camera Gear", "Health", "Emergency"];
 const investingCategories = ["401K", "Roth IRA", "Acorns"];
 
-let transactions = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+let transactions = [];
+let historicalMonthly = [...DEFAULT_HISTORICAL_MONTHLY];
+let currentSinkingFunds = [...DEFAULT_SINKING_FUNDS];
 
 const form = document.getElementById("transactionForm");
 const dateInput = document.getElementById("date");
@@ -627,19 +597,16 @@ const budgetMonthInput = document.getElementById("budgetMonth");
 const themeToggle = document.getElementById("themeToggle");
 const syncStatus = document.getElementById("syncStatus");
 const reloadSheetButton = document.getElementById("reloadSheet");
-const clearLocalButton = document.getElementById("clearLocal");
 
 dateInput.valueAsDate = new Date();
 
-const savedTheme = localStorage.getItem("budgetTheme");
-if (savedTheme === "dark") document.body.classList.add("dark");
+if (localStorage.getItem("budgetTheme") === "dark") {
+  document.body.classList.add("dark");
+}
 
 themeToggle.addEventListener("click", () => {
   document.body.classList.toggle("dark");
-  localStorage.setItem(
-    "budgetTheme",
-    document.body.classList.contains("dark") ? "dark" : "light"
-  );
+  localStorage.setItem("budgetTheme", document.body.classList.contains("dark") ? "dark" : "light");
 });
 
 function setStatus(message) {
@@ -659,91 +626,20 @@ function numberFromSheet(value) {
   return Number(String(value).replace(/[$,]/g, "")) || 0;
 }
 
-function keyify(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function getField(item, possibleNames, fallback = "") {
-  if (!item) return fallback;
-
-  for (const name of possibleNames) {
-    if (Object.prototype.hasOwnProperty.call(item, name)) {
-      return item[name];
-    }
-  }
-
-  const normalizedMap = {};
-  Object.keys(item).forEach(key => {
-    normalizedMap[keyify(key)] = item[key];
-  });
-
-  for (const name of possibleNames) {
-    const normalized = keyify(name);
-    if (Object.prototype.hasOwnProperty.call(normalizedMap, normalized)) {
-      return normalizedMap[normalized];
-    }
-  }
-
-  return fallback;
-}
-
-function normalizeDate(value) {
-  if (!value) return "";
-
-  const stringValue = String(value).trim();
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(stringValue)) {
-    return stringValue;
-  }
-
-  if (/^\d{4}-\d{2}/.test(stringValue)) {
-    return stringValue.slice(0, 10);
-  }
-
-  const date = new Date(value);
-
-  if (!isNaN(date.getTime())) {
-    return date.toISOString().slice(0, 10);
-  }
-
-  return stringValue;
-}
-
 function normalizeMonthKey(value) {
   if (!value) return "";
 
   const raw = String(value).trim();
   const lower = raw.toLowerCase();
 
-  if (/^\d{4}-\d{2}$/.test(raw)) {
-    return raw;
-  }
+  if (/^\d{4}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw.slice(0, 7);
+  if (/^\d{4}-\d{2}-\d{2}t/i.test(raw)) return raw.slice(0, 7);
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return raw.slice(0, 7);
-  }
+  const lettersOnly = lower.replace(/[^a-z]/g, "");
 
-  if (/^\d{4}-\d{2}-\d{2}t/i.test(raw)) {
-    return raw.slice(0, 7);
-  }
-
-  if (MONTH_NAME_TO_KEY[lower]) {
-    return MONTH_NAME_TO_KEY[lower];
-  }
-
-  const cleaned = lower.replace(/[^a-z]/g, "");
-  if (MONTH_NAME_TO_KEY[cleaned]) {
-    return MONTH_NAME_TO_KEY[cleaned];
-  }
-
-  const date = new Date(raw);
-
-  if (!isNaN(date.getTime())) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-  }
+  if (MONTH_NAME_TO_KEY[lower]) return MONTH_NAME_TO_KEY[lower];
+  if (MONTH_NAME_TO_KEY[lettersOnly]) return MONTH_NAME_TO_KEY[lettersOnly];
 
   return "";
 }
@@ -753,6 +649,30 @@ function monthLabel(monthValue) {
   return MONTH_KEY_TO_NAME[key] || String(monthValue || "");
 }
 
+function normalizeDate(value) {
+  if (!value) return "";
+
+  const raw = String(value).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}t/i.test(raw)) return raw.slice(0, 10);
+
+  const date = new Date(raw);
+
+  if (!isNaN(date.getTime())) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  return raw;
+}
+
+function keyify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function normalizeSinkingName(value) {
   const raw = String(value || "").trim();
 
@@ -760,20 +680,18 @@ function normalizeSinkingName(value) {
     miscellaneous: "Miscellanous",
     miscellanous: "Miscellanous",
     misc: "Miscellanous",
+    gifts: "Gifts",
+    gift: "Gifts",
     technology: "Technology",
     tech: "Technology",
     computer: "Technology",
-    gifts: "Gifts",
-    gift: "Gifts",
     vacations: "Vacations",
     vacation: "Vacations",
     travel: "Vacations",
     wedding: "Wedding",
     christmas: "Christmas",
     carmaintenance: "Car Maintenance",
-    car: "Car Maintenance",
     cameragear: "Camera Gear",
-    camera: "Camera Gear",
     health: "Health",
     medical: "Health",
     emergency: "Emergency"
@@ -784,20 +702,16 @@ function normalizeSinkingName(value) {
 
 function normalizeTransaction(item) {
   return {
-    id: getField(item, ["id", "ID"], crypto.randomUUID()),
-    type: String(getField(item, ["type", "Type"], "")).trim().toLowerCase(),
-    date: normalizeDate(getField(item, ["date", "Date"], "")),
-    description: getField(item, ["description", "Description", "desc"], ""),
-    category: normalizeSinkingName(getField(item, ["category", "Category"], "")),
-    sinkingAction: String(getField(item, ["sinkingAction", "Sinking Action", "action", "Action"], "")).trim().toLowerCase(),
-    person: getField(item, ["person", "Person"], ""),
-    method: getField(item, ["method", "Method", "paymentMethod", "Payment Method", "card", "Card"], ""),
-    amount: numberFromSheet(getField(item, ["amount", "Amount"], 0))
+    id: item.id || crypto.randomUUID(),
+    type: String(item.type || "").trim().toLowerCase(),
+    date: normalizeDate(item.date),
+    description: item.description || "",
+    category: normalizeSinkingName(item.category || ""),
+    sinkingAction: String(item.sinkingAction || "").trim().toLowerCase(),
+    person: item.person || "",
+    method: item.method || "",
+    amount: numberFromSheet(item.amount)
   };
-}
-
-function saveLocal() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
 }
 
 async function saveTransactionToGoogleSheet(transaction) {
@@ -812,47 +726,49 @@ async function loadDataFromGoogleSheet() {
   try {
     setStatus("Loading from Google Sheet...");
 
-    const response = await fetch(GOOGLE_SCRIPT_URL);
+    const response = await fetch(GOOGLE_SCRIPT_URL, { cache: "no-store" });
     const data = await response.json();
 
-    const loadedTransactions = (data.transactions || []).map(normalizeTransaction);
-    transactions = loadedTransactions;
+    transactions = (data.transactions || []).map(normalizeTransaction);
 
-    const loadedHistoricalMonthly = (data.historicalMonthly || []).map(item => ({
-      month: normalizeMonthKey(getField(item, ["month", "Month"], "")),
-      income: numberFromSheet(getField(item, ["income", "Income"], 0)),
-      expenses: numberFromSheet(getField(item, ["expenses", "Expenses", "expense", "Expense"], 0)),
-      savings: numberFromSheet(getField(item, ["savings", "Savings", "saving", "Saving"], 0)),
-      investing: numberFromSheet(getField(item, ["investing", "Investing", "investment", "Investment"], 0))
-    })).filter(item => item.month);
+    const sheetHistorical = (data.historicalMonthly || [])
+      .map(item => ({
+        month: item.month || "",
+        income: numberFromSheet(item.income),
+        expenses: numberFromSheet(item.expenses),
+        savings: numberFromSheet(item.savings),
+        investing: numberFromSheet(item.investing),
+        remaining: numberFromSheet(item.remaining)
+      }))
+      .filter(item => normalizeMonthKey(item.month));
 
-    if (loadedHistoricalMonthly.length) {
-      historicalMonthly = loadedHistoricalMonthly;
-    }
+    historicalMonthly = sheetHistorical.length ? sheetHistorical : [...DEFAULT_HISTORICAL_MONTHLY];
 
-    const loadedSinkingFunds = (data.sinkingFunds || []).map(item => ({
-      name: normalizeSinkingName(getField(item, ["name", "Name", "sinkingFund", "Sinking Fund", "fund", "Fund", "category", "Category"], "")),
-      current: numberFromSheet(getField(item, ["current", "Current", "amount", "Amount", "balance", "Balance"], 0))
-    })).filter(item => item.name);
+    const sheetSinkingFunds = (data.sinkingFunds || [])
+      .map(item => ({
+        name: normalizeSinkingName(item.name || ""),
+        current: numberFromSheet(item.current)
+      }))
+      .filter(item => item.name);
 
-    if (loadedSinkingFunds.length) {
-      currentSinkingFunds = loadedSinkingFunds;
-    }
+    currentSinkingFunds = sheetSinkingFunds.length ? sheetSinkingFunds : [...DEFAULT_SINKING_FUNDS];
 
-    saveLocal();
+    updateDynamicFields();
     render();
+
     setStatus("Synced with Google Sheet.");
   } catch (error) {
     console.error("Google Sheet load failed:", error);
-    setStatus("Could not load Google Sheet. Showing local browser data.");
+    historicalMonthly = [...DEFAULT_HISTORICAL_MONTHLY];
+    currentSinkingFunds = [...DEFAULT_SINKING_FUNDS];
     render();
+    setStatus("Could not load Google Sheet. Showing default data.");
   }
 }
 
-function sumTransactions(filter) {
-  return transactions
-    .filter(filter)
-    .reduce((total, item) => total + Number(item.amount), 0);
+function getSinkingCategories() {
+  const sheetCategories = currentSinkingFunds.map(fund => fund.name).filter(Boolean);
+  return sheetCategories.length ? sheetCategories : DEFAULT_SINKING_FUNDS.map(fund => fund.name);
 }
 
 function updateDynamicFields() {
@@ -872,7 +788,7 @@ function updateDynamicFields() {
   if (type === "sinking") {
     categoryField.classList.remove("hidden");
     sinkingActionField.classList.remove("hidden");
-    sinkingCategories.forEach(category => categoryInput.add(new Option(category, category)));
+    getSinkingCategories().forEach(category => categoryInput.add(new Option(category, category)));
   }
 
   if (type === "investing") {
@@ -893,7 +809,8 @@ function getMonthlyData() {
       income: numberFromSheet(item.income),
       expenses: numberFromSheet(item.expenses),
       savings: numberFromSheet(item.savings),
-      investing: numberFromSheet(item.investing)
+      investing: numberFromSheet(item.investing),
+      remaining: numberFromSheet(item.remaining)
     };
   });
 
@@ -908,17 +825,13 @@ function getMonthlyData() {
         income: 0,
         expenses: 0,
         savings: 0,
-        investing: 0
+        investing: 0,
+        remaining: 0
       };
     }
 
-    if (item.type === "income") {
-      monthly[month].income += Number(item.amount);
-    }
-
-    if (item.type === "expense") {
-      monthly[month].expenses += Number(item.amount);
-    }
+    if (item.type === "income") monthly[month].income += Number(item.amount);
+    if (item.type === "expense") monthly[month].expenses += Number(item.amount);
 
     if (item.type === "investing" && ["Roth IRA", "Acorns"].includes(item.category)) {
       monthly[month].investing += Number(item.amount);
@@ -927,9 +840,19 @@ function getMonthlyData() {
     if (item.type === "sinking" && item.sinkingAction === "add") {
       monthly[month].savings += Number(item.amount);
     }
+
+    monthly[month].remaining =
+      monthly[month].income -
+      monthly[month].expenses -
+      monthly[month].savings -
+      monthly[month].investing;
   });
 
   return monthly;
+}
+
+function sumTransactions(filter) {
+  return transactions.filter(filter).reduce((total, item) => total + Number(item.amount), 0);
 }
 
 function renderSummary() {
@@ -995,7 +918,7 @@ function progressBar(label, description, spent, budget) {
   const overClass = percent > 100 ? "over" : "";
 
   return `
-    <div class="progress-card" title="${label}: ${money(spent)} used of ${money(budget)}">
+    <div class="progress-card">
       <div class="progress-top">
         <div>
           <div class="progress-title">${label}</div>
@@ -1055,16 +978,11 @@ function renderBudgetMethod() {
 }
 
 function sinkingNameMatches(a, b) {
-  return keyify(normalizeSinkingName(a)) === keyify(normalizeSinkingName(b));
+  return normalizeSinkingName(a).toLowerCase() === normalizeSinkingName(b).toLowerCase();
 }
 
 function renderSinkingFunds() {
   const container = document.getElementById("currentSinkingFunds");
-
-  if (!currentSinkingFunds.length) {
-    container.innerHTML = `<p class="small">No sinking funds found. Check your SinkingFunds tab headers.</p>`;
-    return;
-  }
 
   container.innerHTML = currentSinkingFunds.map(fund => {
     const additions = sumTransactions(item =>
@@ -1103,7 +1021,6 @@ function renderTransactionTables() {
         <td>${item.description}</td>
         <td>${item.person}</td>
         <td class="positive">+${money(item.amount)}</td>
-        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
@@ -1119,7 +1036,6 @@ function renderTransactionTables() {
         <td>${item.person}</td>
         <td>${item.method}</td>
         <td class="negative">-${money(item.amount)}</td>
-        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
@@ -1134,7 +1050,6 @@ function renderTransactionTables() {
         <td><span class="pill">${item.category}</span></td>
         <td>${item.person}</td>
         <td class="negative">-${money(item.amount)}</td>
-        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
@@ -1152,22 +1067,21 @@ function renderTransactionTables() {
         <td class="${item.sinkingAction === "add" ? "positive" : "negative"}">
           ${item.sinkingAction === "add" ? "+" : "-"}${money(item.amount)}
         </td>
-        <td><button class="btn-danger" onclick="deleteLocalTransaction('${item.id}')">Delete Local</button></td>
       </tr>
     `)
     .join("");
 
   document.getElementById("incomeTransactions").innerHTML =
-    incomeRows || `<tr><td colspan="5" class="empty">No income transactions yet.</td></tr>`;
+    incomeRows || `<tr><td colspan="4" class="empty">No income transactions yet.</td></tr>`;
 
   document.getElementById("expenseTransactions").innerHTML =
-    expenseRows || `<tr><td colspan="7" class="empty">No expense transactions yet.</td></tr>`;
+    expenseRows || `<tr><td colspan="6" class="empty">No expense transactions yet.</td></tr>`;
 
   document.getElementById("investingTransactions").innerHTML =
-    investingRows || `<tr><td colspan="6" class="empty">No investing transactions yet.</td></tr>`;
+    investingRows || `<tr><td colspan="5" class="empty">No investing transactions yet.</td></tr>`;
 
   document.getElementById("sinkingTransactions").innerHTML =
-    sinkingRows || `<tr><td colspan="7" class="empty">No sinking fund transactions yet.</td></tr>`;
+    sinkingRows || `<tr><td colspan="6" class="empty">No sinking fund transactions yet.</td></tr>`;
 }
 
 function renderGroupedList(id, groupedData, emptyMessage) {
@@ -1197,17 +1111,6 @@ function groupBy(key, filter) {
   }, {});
 }
 
-function deleteLocalTransaction(id) {
-  transactions = transactions.filter(item => item.id !== id);
-  saveLocal();
-  render();
-  setStatus("Deleted locally only. To delete from Google Sheet, remove the row in the Transactions tab.");
-}
-
-function saveLocal() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-}
-
 function render() {
   renderSummary();
   renderMonthlySummary();
@@ -1219,7 +1122,7 @@ function render() {
   renderGroupedList(
     "cardSpend",
     groupBy("method", item => item.type === "expense"),
-    "No added credit card spending yet."
+    "No credit card spending yet."
   );
 }
 
@@ -1245,43 +1148,29 @@ form.addEventListener("submit", async event => {
   };
 
   transactions.push(transaction);
-  saveLocal();
   render();
 
   setStatus("Saving to Google Sheet...");
 
   try {
     await saveTransactionToGoogleSheet(transaction);
-
-    await new Promise(resolve => setTimeout(resolve, 700));
-
+    await new Promise(resolve => setTimeout(resolve, 800));
     await loadDataFromGoogleSheet();
-
     setStatus("Saved and synced with Google Sheet.");
   } catch (error) {
     console.error("Google Sheet save failed:", error);
-    setStatus("Saved locally, but Google Sheet sync failed.");
+    setStatus("Could not save to Google Sheet. Check Apps Script deployment.");
   }
 
   form.reset();
   typeInput.value = type;
   dateInput.valueAsDate = new Date();
-
   updateDynamicFields();
   render();
 });
 
 reloadSheetButton.addEventListener("click", () => {
   loadDataFromGoogleSheet();
-});
-
-clearLocalButton.addEventListener("click", () => {
-  if (confirm("Clear local browser cache only? This will not delete your Google Sheet data.")) {
-    transactions = [];
-    localStorage.removeItem(STORAGE_KEY);
-    render();
-    setStatus("Local cache cleared. Reload from Google Sheet to restore synced data.");
-  }
 });
 
 typeInput.addEventListener("change", updateDynamicFields);
